@@ -1,6 +1,6 @@
 from src.app import app
 from flask import request
-# from src.database import db
+from src.database import db
 
 @app.route("/lab/create")
 def create_lab():
@@ -15,9 +15,13 @@ def create_lab():
 @app.route("/lab/<lab_id>/search")
 def search_into_lab(lab_id):
     '''
-    receives: a lab name a student id.
-    purpose: analyze students submissions on specific lab.
-    return: see Lab Analysis section in the instructions.
+    receives:   a lab name.
+    purpose:    analyze students submissions on specific lab.
+                    what we have to do is first select all the user_id in the students DB 
+                    and then analyze the activity of theses students in the lab given as 
+                    parameter. 
+
+    return: For each student in the lab:
             - number of open PR
             - number of closed PR
             - percentage of completeness (closed vs open)
