@@ -15,6 +15,15 @@ def user_exists_in_github(username):
     return response.status_code == 200
 
 
+def insert_new_student(collection, name):
+    new_student = {
+        "name": name
+    }
+
+    result = collection.insert_one(new_student)
+    return {"_id": str(result.inserted_id)}
+
+
 @app.route("/student/create/<student_name>")
 def create_student(student_name):
     '''
@@ -25,19 +34,15 @@ def create_student(student_name):
     '''
     collection = db.students
 
-    new_student_document = {
-        "name": student_name
-    }
-
     if user_already_in_db(collection, student_name):
         return f"El usuario {student_name} ya existe en la BD."
 
-    # Si el usuario existe en github los inserta en la base de datos
-    if user_exists_in_github:
-        result = collection.insert_one(new_student_document)
-        return {"_id": str(result.inserted_id)}
+    if user_exists_in_github(student_name):
+        return insert_new_student(collection, student_name)
+    else:
+        return f"El usuario {student_name} no existe en Github."
 
-    return f"El usuario {student_name} no existe en Github."
+    return "No se ha guardado el alumno en la base de datos. Problema desconocido."
 
 
 @app.route("/student/all")
