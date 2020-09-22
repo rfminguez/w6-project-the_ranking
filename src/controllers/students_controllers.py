@@ -54,7 +54,7 @@ def search_students():
     '''
     collection = db.students
 
-    # Quito el campo _id porque es un objeto y no es JSON serializable.
+    # Quito el campo _id de los datos a mostrar porque es un objeto y no es JSON serializable.
     cursor = collection.find({}, {'_id': False})
 
     return(jsonify(list(cursor)))
