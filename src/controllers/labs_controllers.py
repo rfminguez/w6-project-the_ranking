@@ -2,15 +2,38 @@ from src.app import app
 from flask import request
 from src.database import db
 
-@app.route("/lab/create")
+
+def lab_already_in_db(collection, lab_name):
+    result = collection.find_one({"name": lab_name})
+    return result is not None and len(result) > 0
+
+
+def insert_new_lab(collection, lab_name):
+    new_lab = {
+        "name": lab_name,
+        "prefix": f"[{lab_name}]"
+    }
+
+    result = collection.insert_one(new_lab)
+    return {"_id": str(result.inserted_id)}
+
+
+@app.route("/lab/create", methods = ['POST'])
 def create_lab():
     '''
-    POST method
-    receives: a string with the lab-prefix to analyze (i.e. [lab-scavengers]).
-    purpose: create a new entry in the labs database.
-    returns: lab_id
+    receives: a lab name via POST method.
+    purpose: create a new document in the labs collection.
+    returns: _id of the lab once inserted in the DB.
     '''
-    return f"[TO-DO] Receive a lab via POST method and save it into DB."
+    collection = db.labs
+
+    lab_name = request.json["name"]
+
+    if lab_already_in_db(collection, lab_name):
+        return f"El lab {lab_name} ya existe en la BD."
+
+    return insert_new_lab(collection, lab_name)
+
 
 @app.route("/lab/<lab_id>/search")
 def search_into_lab(lab_id):
@@ -28,6 +51,8 @@ def search_into_lab(lab_id):
             - number of missing PR from students
             - list of unique memes used for that lab
             - instructor grade time in hours (pr_closetime - last_commit_time)
+            Important:  remember that some labs are not individual and you have to
+                        find the student names in the body of the PR.
     '''
     return f"[TO-DO] Search a lab ({lab_id}) and analyze it according to instructions."
 
