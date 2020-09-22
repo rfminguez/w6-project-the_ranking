@@ -5,7 +5,8 @@ import requests
 
 
 def user_already_in_db(collection, username):
-    return collection.find_one({"name": username}).count() > 0
+    result = collection.find_one({"name": username})
+    return result is not None and len(result) > 0
 
 
 def user_exists_in_github(username):
