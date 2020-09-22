@@ -58,4 +58,3 @@ def search_students():
     cursor = collection.find({}, {'_id': False})
 
     return(jsonify(list(cursor)))
-
