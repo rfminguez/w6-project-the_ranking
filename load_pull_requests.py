@@ -49,33 +49,44 @@ def get_pull_requests(api_url):
 
 def get_commit_dates(api_url):
     data = call_api(api_url, query_params={})
-
     return [commit["commit"]["author"]["date"] for commit in data]
 
 
 def get_comments(api_url):
     data = call_api(api_url, query_params={})
-
     return [{"author": comment["user"]["login"], "body": comment["body"]} for comment in data]
 
 
 def get_students_from_body(pull_request_body):
     # Busco el patrón @usuario dentro del body del pull request
-    result = re.findall(r"\@\w+", pull_request_body)
+    result = re.findall(r"\@[\w\-]+", pull_request_body)
 
     # Quito las @ del principio
     return map(lambda s: s.replace("@", ""), result)
 
 
+def get_students_from_comments(list_of_comments):
+    result = []
+    for comment in list_of_comments:
+        if re.match(r"^join$", comment["body"]):
+            result.append(comment["author"])
+    return result
+
+
 def get_list_of_students(pull_request):
-    # TO-DO: también hay que revisar los comments para buscar alumnos asignados al lab...
-    
-    # Primero inserto el usuario asociado a la pull request
-    list_of_students = [pull_request["user"]["login"]]
+    # Primero inserto el usuario que abrió la pull request
+    list_of_students = [pull_request["user"]]
+
     # Luego busco los alumnos que aparecen referenciados en el body
     for student in get_students_from_body(pull_request["body"]):
         if student not in list_of_students:
             list_of_students.append(student)
+
+    # Y por último busco los que aparecen en los comments
+    for student in get_students_from_comments(pull_request["comments"]):
+        if student not in list_of_students:
+            list_of_students.append(student)
+
     return list_of_students
 
 
@@ -85,6 +96,20 @@ def get_lab_name(title):
     if lab_name:
         return lab_name.group(1)
     return None
+
+
+def get_meme_images(pull_request_body):
+    '''
+    receives:   the body of a pull request.
+    purpose:    look for images enbedded inside the body of the pull request (image format ".jpg", ".jpeg" and ".png").
+    returns:    the images that there are inside the body.
+    '''
+    # busco el patrón https://<nombre_imagen>.<formato> con una regex
+    regex_result = re.search(r"(https://.*\.(jpg|png|jpeg))", pull_request_body)
+    result = []
+    if regex_result is not None:
+        result.append(regex_result.group(0))
+    return result
 
 
 def dump_to_database(collection, data):
@@ -106,20 +131,24 @@ def dump_to_database(collection, data):
             "state": pull_request["state"],
             "locked": pull_request["locked"],
             "title": pull_request["title"],
-            "students": get_list_of_students(pull_request), # TO-DO: también hay que revisar los comments para buscar alumnos asignados al lab...
+            "user": pull_request["user"]["login"],
             "asignees": [asignee["login"] for asignee in pull_request["assignees"]], # Profes que revisan el lab
             "body": pull_request["body"],
             "created_at": pull_request["created_at"],
             "updated_at": pull_request["updated_at"],
-            "base_pushed_at": pull_request["base"]["repo"]["pushed_at"],  # Ej. "pushed_at": "2020-09-18T10:34:21Z" "2020-09-21T16:45:53Z"
+            "base_pushed_at": pull_request["base"]["repo"]["pushed_at"],
             "closed_at": pull_request["closed_at"],
-            #"comments": pull_request["_links"]["comments"]["href"],
             "comments": get_comments(pull_request["_links"]["comments"]["href"]),
-            #"review_comments": pull_request["_links"]["review_comments"]["href"],
             "commit_dates": get_commit_dates(pull_request["commits_url"]),
-            "memes": [] # [TO-DO] Buscar memes y guardarlos aquí.
+            "memes": get_meme_images(pull_request["body"])
         }
 
+        # Una vez tengo la pull_request con los datos de comentarios que me he traído con otra llamada a la api:
+        # - busco los estudiantes adicionales que pueden estar asociados a la pull request
+        list_of_students = get_list_of_students(new_pull_request)
+        new_pull_request["students"] = list_of_students
+
+        # Guardo en mongodb
         collection.insert_one(new_pull_request)
 
 
