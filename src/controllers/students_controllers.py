@@ -39,7 +39,7 @@ def create_student(student_name):
         return f"El usuario {student_name} ya existe en la BD."
 
     if user_exists_in_github(student_name):
-        return insert_new_student(collection, student_name)
+        return jsonify(insert_new_student(collection, student_name))
     else:
         return f"El usuario {student_name} no existe en Github."
 
